@@ -7,29 +7,32 @@ from sklearn.pipeline import Pipeline
 import joblib
 
 # ----- AI Libraries -----
-import easyocr
-reader = easyocr.Reader(['en'])  # For handwritten complaints
+try:
+    import easyocr
+    reader = easyocr.Reader(['en'])
+except ImportError:
+    print("⚠️ EasyOCR not installed, image complaints will fail")
+    reader = None
 
-import whisper
-model_whisper = whisper.load_model("base")  # For audio complaints
+try:
+    import whisper
+    model_whisper = whisper.load_model("base")
+except ImportError:
+    print("⚠️ Whisper not installed, audio complaints will fail")
+    model_whisper = None
 
 # ----- Paths -----
 DATA_PATH = "data/complaints.csv"
 MODEL_PATH = "models/grievance_model.pkl"
 
-# ----- 1. Train AI model -----
+# ----- Train AI model -----
 def train_model():
-    """
-    Train a complaint category classifier using your dataset.
-    Expects 'Complaint_Text' as input and 'Category' as target.
-    Saves trained model to models/grievance_model.pkl
-    """
     if not os.path.exists(DATA_PATH):
-        raise FileNotFoundError(f"{DATA_PATH} not found. Add your dataset first.")
+        print(f"⚠️ {DATA_PATH} not found. Add dataset first.")
+        return
 
     df = pd.read_csv(DATA_PATH)
 
-    # Check required columns exist
     required_cols = ["Complaint_Text", "Category"]
     for col in required_cols:
         if col not in df.columns:
@@ -38,64 +41,42 @@ def train_model():
     X = df["Complaint_Text"]
     y = df["Category"]
 
-    # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
 
-    # Pipeline: TF-IDF + Logistic Regression
     model = Pipeline([
         ("tfidf", TfidfVectorizer(stop_words="english")),
         ("clf", LogisticRegression(max_iter=1000))
     ])
 
     model.fit(X_train, y_train)
-    print(f"✅ Model trained on {len(X_train)} samples.")
-
-    # Save model
     os.makedirs("models", exist_ok=True)
     joblib.dump(model, MODEL_PATH)
-    print(f"✅ Model saved to {MODEL_PATH}")
+    print(f"✅ Model trained and saved at {MODEL_PATH}")
 
-# ----- 2. Predict category -----
+# ----- Predict category -----
 def predict_category(text):
-    """
-    Predict category for a given complaint text.
-    """
     if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model not found at {MODEL_PATH}. Run train_model() first.")
-    
+        print(f"⚠️ Model not found at {MODEL_PATH}, returning 'Unknown'")
+        return "Unknown"
     model = joblib.load(MODEL_PATH)
     return model.predict([text])[0]
 
-# ----- 3. Extract text from image -----
+# ----- Extract text from image -----
 def extract_text_from_image(image_path):
-    """
-    Use EasyOCR to extract text from handwritten complaint image.
-    Returns concatenated text.
-    """
+    if reader is None:
+        raise RuntimeError("EasyOCR not available")
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
-
     result = reader.readtext(image_path, detail=0)
-    extracted_text = " ".join(result)
-    return extracted_text
+    return " ".join(result)
 
-# ----- 4. Transcribe audio -----
+# ----- Transcribe audio -----
 def transcribe_audio(audio_path):
-    """
-    Use Whisper to transcribe voice complaint to text.
-    """
+    if model_whisper is None:
+        raise RuntimeError("Whisper not available")
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
-
     result = model_whisper.transcribe(audio_path)
     return result.get("text", "")
-
-# ----- 5. Optional: test functions -----
-if __name__ == "__main__":
-    # Train model if needed
-    train_model()
-    # Test text prediction
-    sample_text = "Internet not working in my village"
-    print("Predicted category:", predict_category(sample_text))
