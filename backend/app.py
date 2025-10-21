@@ -4,6 +4,10 @@ from flask import Flask, render_template, request, redirect, url_for
 from flask_cors import CORS
 from nlp import predict_category, extract_text_from_image, transcribe_audio
 import pandas as pd  # For CSV export
+@app.route("/health")
+def health():
+    return "OK"
+
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
