@@ -5,14 +5,15 @@ gunicorn==21.2.0
 
 # Core data analysis and ML dependencies
 pandas==2.2.3
-numpy==1.24.3           # Downgraded to be compatible with TensorFlow 2.13.0
+numpy==1.24.3
 python-dateutil==2.8.2
 scikit-learn==1.4.2
 
 # AI/ML frameworks
-tensorflow==2.13.0      # Compatible with numpy 1.24.3
+tensorflow==2.13.0
 
 # Image processing and OCR
+easyocr==1.6.2
 Pillow==10.0.0
 pytesseract==0.3.13
 
@@ -20,7 +21,3 @@ pytesseract==0.3.13
 Cython==3.0.10
 setuptools>=69.0.0
 wheel>=0.41.2
-
-# Optional audio transcription packages (uncomment if needed)
-# SpeechRecognition==3.11.0
-# pydub==0.25.1
