@@ -6,20 +6,29 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 import joblib
 
-# ----- AI Libraries -----
-try:
-    import easyocr
-    reader = easyocr.Reader(['en'])
-except ImportError:
-    print("⚠️ EasyOCR not installed, image complaints will fail")
-    reader = None
+# ----- Lazy-loaded AI libraries -----
+ocr_reader = None
+whisper_model = None
 
-try:
-    import whisper
-    model_whisper = whisper.load_model("base")
-except ImportError:
-    print("⚠️ Whisper not installed, audio complaints will fail")
-    model_whisper = None
+def get_ocr_reader():
+    global ocr_reader
+    if ocr_reader is None:
+        try:
+            import easyocr
+            ocr_reader = easyocr.Reader(['en'])
+        except ImportError:
+            raise RuntimeError("EasyOCR not installed, image complaints will fail")
+    return ocr_reader
+
+def get_whisper_model():
+    global whisper_model
+    if whisper_model is None:
+        try:
+            import whisper
+            whisper_model = whisper.load_model("base")
+        except ImportError:
+            raise RuntimeError("Whisper not installed, audio complaints will fail")
+    return whisper_model
 
 # ----- Paths -----
 DATA_PATH = "data/complaints.csv"
@@ -65,8 +74,7 @@ def predict_category(text):
 
 # ----- Extract text from image -----
 def extract_text_from_image(image_path):
-    if reader is None:
-        raise RuntimeError("EasyOCR not available")
+    reader = get_ocr_reader()
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image file not found: {image_path}")
     result = reader.readtext(image_path, detail=0)
@@ -74,9 +82,8 @@ def extract_text_from_image(image_path):
 
 # ----- Transcribe audio -----
 def transcribe_audio(audio_path):
-    if model_whisper is None:
-        raise RuntimeError("Whisper not available")
+    model = get_whisper_model()
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
-    result = model_whisper.transcribe(audio_path)
+    result = model.transcribe(audio_path)
     return result.get("text", "")
