@@ -38,6 +38,9 @@ def init_db():
 # -------------------------------
 def update_csv():
     """Export all complaints to CSV."""
+    if not os.path.exists(DB_PATH):
+        print("⚠️ Database not found, skipping CSV update")
+        return
     conn = sqlite3.connect(DB_PATH)
     try:
         df = pd.read_sql_query("SELECT * FROM complaints", conn)
@@ -47,7 +50,6 @@ def update_csv():
     finally:
         conn.close()
 
-# Initialize DB once at import (safe)
 init_db()
 
 # -------------------------------
@@ -57,7 +59,6 @@ init_db()
 def home():
     return redirect("/login")
 
-# -------- Login Page --------
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
@@ -69,7 +70,6 @@ def login():
             return redirect(url_for("admin_dashboard"))
     return render_template("login.html")
 
-# -------- Complaint Submission Page --------
 @app.route("/complaint/<username>", methods=["GET","POST"])
 def complaint_page(username):
     message = ""
@@ -84,20 +84,24 @@ def complaint_page(username):
         elif ctype in ["image", "audio"]:
             file = request.files.get("file")
             if file:
-                # keep filename safe in production; here keep simple
                 file_path = os.path.join("data", file.filename)
+                os.makedirs("data", exist_ok=True)
                 file.save(file_path)
-                if ctype == "image":
-                    text = extract_text_from_image(file_path)
-                else:
-                    text = transcribe_audio(file_path)
+                try:
+                    if ctype == "image":
+                        text = extract_text_from_image(file_path)
+                    else:
+                        text = transcribe_audio(file_path)
+                except Exception as e:
+                    text = ""
+                    print("⚠️ Error processing file:", e)
 
         # Predict category
         try:
             category = predict_category(text)
         except Exception as e:
             category = "Unknown"
-            print("Error predicting category:", e)
+            print("⚠️ Error predicting category:", e)
 
         # Insert into DB
         conn = sqlite3.connect(DB_PATH)
@@ -110,14 +114,11 @@ def complaint_page(username):
         finally:
             conn.close()
 
-        # Update CSV immediately
         update_csv()
-
         message = f"✅ Complaint submitted! Predicted category: {category}"
 
     return render_template("complaint.html", username=username, message=message)
 
-# -------- Admin Dashboard --------
 @app.route("/admin")
 def admin_dashboard():
     conn = sqlite3.connect(DB_PATH)
