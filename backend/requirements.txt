@@ -24,8 +24,6 @@ libclang==18.1.1
 easyocr==1.6.2
 Pillow==10.0.0
 pytesseract==0.3.13
-torch==2.2.0        # downgraded for TensorFlow compatibility
-torchvision==0.16.0 # downgraded to match torch 2.2
 opencv-python-headless<=4.5.4.60   # compatible with EasyOCR
 
 # Build dependencies
