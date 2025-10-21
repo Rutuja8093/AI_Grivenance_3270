@@ -15,7 +15,8 @@ tensorflow==2.13.0
 
 # Image processing and OCR
 Pillow==10.0.0
-pytesseract==0.3.11
+pytesseract==0.3.13
+
 
 # Build and compatibility dependencies
 Cython==3.0.10
